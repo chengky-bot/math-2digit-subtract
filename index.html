@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Home, ArrowLeft, 
-  ShoppingBag, Package, 
+  ShoppingBag, Package, Play,
   Smile, ShieldAlert, Check, Volume2, VolumeX,
   Users, X, Edit3, ArrowRight, Coffee, CheckCircle2, ArrowUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
-// --- 全局設定與工具 ---
+// --- 1. 全局設定與題庫 (Global Config & Data) ---
 
 const COLORS = {
   story: 'bg-indigo-50 text-indigo-900',
@@ -66,6 +66,7 @@ const CATEGORIES = [
   }
 ];
 
+// 音效控制單例
 const audioManager = {
   isMuted: false,
   speak: (text) => {
@@ -81,11 +82,11 @@ const audioManager = {
   },
   playSound: (type) => {
     if (audioManager.isMuted) return;
-    // Sound effect logic here
+    // console.log(`Playing sound: ${type}`);
   }
 };
 
-// --- 組件 ---
+// --- 2. 共用 UI 組件 (Shared Components) ---
 
 const MainMenu = ({ onSelect }) => {
   return (
@@ -100,6 +101,7 @@ const MainMenu = ({ onSelect }) => {
       </motion.div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+        {/* Story Mode Button */}
         <motion.button
           whileHover={{ scale: 1.05, y: -10 }}
           whileTap={{ scale: 0.95 }}
@@ -107,18 +109,22 @@ const MainMenu = ({ onSelect }) => {
             audioManager.speak("數字救援隊");
             onSelect('story');
           }}
-          className="h-96 rounded-[2rem] shadow-xl flex flex-col items-center justify-between p-8 text-white bg-indigo-500 border-indigo-700 border-b-8 relative overflow-hidden group"
+          className="h-80 rounded-[2rem] shadow-xl flex flex-col items-center justify-between p-8 text-white bg-indigo-500 border-indigo-700 border-b-8 relative overflow-hidden group"
         >
-          <div className="bg-white/20 p-6 rounded-full backdrop-blur-sm shadow-inner mt-4">
+          <div className="bg-white/20 p-6 rounded-full backdrop-blur-sm shadow-inner mt-2">
             <Users size={48} />
           </div>
           <div className="text-center z-10">
             <span className="inline-block px-3 py-1 bg-black/20 rounded-full text-sm font-bold mb-2 backdrop-blur-md">故事模式</span>
             <h2 className="text-3xl font-black mb-2 shadow-sm">數字救援隊</h2>
-            <p className="text-white/90 text-lg font-medium leading-relaxed">依程度練習！基礎到進階，各種減法挑戰！</p>
+            <p className="text-white/90 text-lg font-medium leading-relaxed">保護小兵！把怪獸趕走！</p>
+          </div>
+          <div className="bg-white/20 px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2">
+            <Play size={16} fill="currentColor" /> 開始遊戲
           </div>
         </motion.button>
 
+        {/* Burger Mode Button */}
         <motion.button
           whileHover={{ scale: 1.05, y: -10 }}
           whileTap={{ scale: 0.95 }}
@@ -126,15 +132,18 @@ const MainMenu = ({ onSelect }) => {
             audioManager.speak("快樂漢堡店");
             onSelect('burger');
           }}
-          className="h-96 rounded-[2rem] shadow-xl flex flex-col items-center justify-between p-8 text-white bg-orange-500 border-orange-700 border-b-8 relative overflow-hidden group"
+          className="h-80 rounded-[2rem] shadow-xl flex flex-col items-center justify-between p-8 text-white bg-orange-500 border-orange-700 border-b-8 relative overflow-hidden group"
         >
-          <div className="bg-white/20 p-6 rounded-full backdrop-blur-sm shadow-inner mt-4">
+          <div className="bg-white/20 p-6 rounded-full backdrop-blur-sm shadow-inner mt-2">
             <ShoppingBag size={48} />
           </div>
           <div className="text-center z-10">
             <span className="inline-block px-3 py-1 bg-black/20 rounded-full text-sm font-bold mb-2 backdrop-blur-md">職業模擬</span>
             <h2 className="text-3xl font-black mb-2 shadow-sm">快樂漢堡店</h2>
             <p className="text-white/90 text-lg font-medium leading-relaxed">當個好店長！準備漢堡和搬運箱子！</p>
+          </div>
+          <div className="bg-white/20 px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2">
+            <Play size={16} fill="currentColor" /> 開始遊戲
           </div>
         </motion.button>
       </div>
@@ -223,14 +232,19 @@ const CustomInput = ({ color, onBack, onStart }) => {
   );
 };
 
+// --- 3. 遊戲組件 1: 數字救援隊 (Story Game) ---
+
 const StoryGame = ({ onBack }) => {
   const [mode, setMode] = useState('category');
   const [currentCategory, setCurrentCategory] = useState(null);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [q, setQ] = useState(null); 
   const [step, setStep] = useState(1); 
+  // Step: 1:Intro, 2:Check, 3:CallHelp, 4:Transform, 5:Ready, 6:ClickUnit, 7:ClickTen, 8:Success
   const [clickedSoldiers, setClickedSoldiers] = useState([]); 
   const [clickedGiants, setClickedGiants] = useState([]); 
+  
+  // 答案輸入狀態
   const [userAnswer, setUserAnswer] = useState('');
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(null); 
   const inputRef = useRef(null);
@@ -266,14 +280,14 @@ const StoryGame = ({ onBack }) => {
     const correctAnswer = q.min - q.sub;
     if (parseInt(userAnswer) === correctAnswer) {
       setIsAnswerCorrect(true);
-      setStep(8); 
+      setStep(8); // 跳轉勝利
       audioManager.playSound('success');
       audioManager.speak(`答對了！答案就是 ${correctAnswer}！太棒了！`);
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     } else {
       setIsAnswerCorrect(false);
       audioManager.playSound('error');
-      audioManager.speak("答案不太對喔，再試試看！");
+      audioManager.speak("答案不太對喔，再算一次看看！");
       setTimeout(() => setIsAnswerCorrect(null), 1500); 
     }
   };
@@ -294,6 +308,7 @@ const StoryGame = ({ onBack }) => {
     if(step === 6) audioManager.speak(`現在，請你點擊 ${q.subUnits} 個小兵，把他們趕走！`);
     if(step === 7) audioManager.speak(`接下來，要減掉 ${q.subTens} 個十位數。請點擊 ${q.subTens} 個巨人把他們趕走！`);
     
+    // 自動對焦輸入框
     if ((step === 6 && clickedSoldiers.length === q.subUnits && q.subTens === 0) || 
         (step === 7 && clickedGiants.length === q.subTens)) {
         audioManager.speak("做好了！現在請在上面輸入答案！");
@@ -301,6 +316,7 @@ const StoryGame = ({ onBack }) => {
     }
 
     if(step === 8 && !userAnswer) { 
+      // 若非手動輸入觸發的勝利（理論上現在都強制手動輸入了，但保留邏輯）
       audioManager.speak(`算出來了！${q.min} 減 ${q.sub} 等於 ${answer}！任務完成！`);
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     }
@@ -328,6 +344,7 @@ const StoryGame = ({ onBack }) => {
 
   return (
     <div className={`min-h-screen ${COLORS.story} p-4 flex flex-col items-center relative overflow-hidden`}>
+      {/* 頂部欄與輸入框 */}
       <div className="w-full max-w-5xl flex justify-between items-center mb-6 z-10">
         <button onClick={() => setMode('category')} className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition"><Home className="text-indigo-600" /></button>
         
@@ -370,14 +387,14 @@ const StoryGame = ({ onBack }) => {
         </h2>
 
         <div className="flex-1 flex flex-col justify-center gap-8">
-          {/* Tens Area */}
+          {/* 十位數區域 */}
           <div className="flex items-end gap-4 p-4 bg-indigo-50 rounded-3xl border-2 border-dashed border-indigo-300 relative min-h-[160px] flex-wrap content-end">
             <span className="absolute top-2 left-4 text-indigo-400 font-bold text-sm">十位數 (巨人)</span>
             <AnimatePresence>
               {Array.from({ length: q.minTens }).map((_, i) => {
                 const isBorrower = q.borrow && (i === q.minTens - 1);
                 const isClicked = clickedGiants.includes(`g-${i}`);
-                if (isBorrower && step >= 5) return null; // Transformed
+                if (isBorrower && step >= 5) return null; // 變身後隱藏
                 return (
                   <motion.div key={`giant-${i}`} layoutId={isBorrower ? "giant-borrower" : undefined} className={`relative text-7xl transition-transform ${step === 7 && !isClicked && !isBorrower && clickedGiants.length < q.subTens ? 'cursor-pointer hover:scale-110' : ''}`} onClick={() => !isBorrower && handleGiantClick(`g-${i}`)}>
                     {isBorrower && step === 4 ? <button onClick={() => setStep(5)} className="absolute inset-0 z-20 animate-bounce">🦸‍♂️</button> : <span>🗿</span>}
@@ -388,7 +405,7 @@ const StoryGame = ({ onBack }) => {
             </AnimatePresence>
           </div>
 
-          {/* Units Area */}
+          {/* 個位數區域 */}
           <div className="flex items-center gap-2 p-4 bg-green-50 rounded-3xl border-2 border-dashed border-green-300 relative min-h-[160px] flex-wrap content-center">
             <span className="absolute top-2 left-4 text-green-600 font-bold text-sm">個位數 (小兵)</span>
             {Array.from({ length: q.minUnits }).map((_, idx) => {
@@ -466,16 +483,19 @@ const StoryGame = ({ onBack }) => {
   );
 };
 
+// --- 4. 遊戲組件 2: 快樂漢堡店 (Burger Game) ---
+
 const BurgerGame = ({ onBack }) => {
   const [mode, setMode] = useState('category');
   const [currentCategory, setCurrentCategory] = useState(null);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [q, setQ] = useState(null);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1:Start, 2:Check, 3:Borrow, 4:Serve Units, 5:Serve Tens, 6:Input Answer, 7:Success
   const [servedBurgers, setServedBurgers] = useState([]);
   const [movedBoxes, setMovedBoxes] = useState([]);
   const [inventory, setInventory] = useState({ boxes: 0, burgers: 0 }); 
   
+  // 輸入驗證狀態
   const [userAnswer, setUserAnswer] = useState('');
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(null); 
   const inputRef = useRef(null);
@@ -544,6 +564,7 @@ const BurgerGame = ({ onBack }) => {
 
   }, [step, mode, q]);
 
+  // Actions
   const handleOpenBox = () => {
     if (step === 3 && inventory.boxes > 0) {
       audioManager.playSound('open-box');
@@ -632,9 +653,17 @@ const BurgerGame = ({ onBack }) => {
               <AnimatePresence>
                 {Array.from({ length: inventory.boxes }).map((_, i) => {
                   const isMoved = movedBoxes.includes(i);
+                  // The last box is the one to open if borrowing
+                  // Note: inventory.boxes decreases when opened, so standard render is fine.
+                  // Special case: If step 3 (Borrow), highlight the last box to open.
                   const isBorrowTarget = step === 3 && i === inventory.boxes - 1;
                   
-                  if (isMoved) return null; 
+                  if (isMoved) return null; // Logic handled by not rendering if moved? No, we track moved by index of initial layout
+                  // Let's rely on simple rendering: We render 'inventory.boxes' count.
+                  // For Step 5 (Move Boxes), we render inventory.boxes and make them clickable.
+                  
+                  // Wait, if step 3 reduces inventory.boxes, that box is GONE from tens. Correct.
+                  // So for step 5, we interact with remaining inventory.boxes.
                   
                   return (
                     <motion.button
@@ -720,10 +749,13 @@ const BurgerGame = ({ onBack }) => {
   );
 };
 
+// --- 5. 主應用程式組件 (Main App Component) ---
+
 export default function MathAdventure() {
   const [currentScreen, setCurrentScreen] = useState('menu');
   const [isMuted, setIsMuted] = useState(false);
 
+  // Sync mute state
   useEffect(() => {
     audioManager.isMuted = isMuted;
     if (isMuted && 'speechSynthesis' in window) {
@@ -733,6 +765,7 @@ export default function MathAdventure() {
 
   return (
     <div className="antialiased text-slate-800">
+      {/* 靜音按鈕 */}
       <button 
         onClick={() => setIsMuted(!isMuted)}
         className="fixed top-4 right-4 z-50 p-3 bg-white/90 backdrop-blur rounded-full shadow-lg border-2 border-slate-200 hover:bg-slate-100 transition-colors"
