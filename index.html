@@ -40,21 +40,30 @@
         .animate-shake {
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
-        /* Custom Scrollbar for better UX on touch */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-            border-radius: 4px;
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; 
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
         }
     </style>
 </head>
@@ -67,34 +76,18 @@
         const { 
             Home, ArrowLeft, ShoppingBag, Package, Play,
             Smile, ShieldAlert, Check, Volume2, VolumeX,
-            Users, X, Edit3, ArrowRight, Coffee, CheckCircle2, ArrowUp 
+            Users, X, Edit3, ArrowRight, Coffee, CheckCircle2, ArrowUp, Type
         } = lucide.icons;
 
-        // Custom Component for Lucide Icons because CDN version is raw SVG string
+        // Custom Component for Lucide Icons
         const Icon = ({ name, size = 24, className = "", ...props }) => {
-            const LucideIcon = lucide.icons[name];
-            if (!LucideIcon) return null;
-            
-            // Render using React.createElement since we are in Babel standalone
-            // The UMD build of lucide exposes createReactComponent, but here we simplify
-            // We use a simple wrapper. Note: The lucide UMD exposes `lucide.icons` which are objects, 
-            // but not directly React components in the browser build usually.
-            // Wait, lucide-react CDN exports might differ.
-            // Let's use a workaround: lucide.createIcons() runs on DOM.
-            // BUT for React, we need React components.
-            // To make this simple in a single HTML file without build steps, 
-            // we will use a small mapping or svg injection.
-            
-            // ACTUALLY: The easiest way with `lucide@latest` script tag is `lucide.createIcons()`.
-            // But we need React components. Let's try to simulate them with an IconWrapper.
-            
             return <i data-lucide={name.toLowerCase().replace(/([a-z0-9])([A-Z])/g, '$1-$2')} className={className} style={{width: size, height: size, display: 'inline-block'}}></i>;
         };
 
         // Framer Motion Wrapper
         const { motion, AnimatePresence } = Motion;
 
-        // Since we are using data-lucide, we need to run lucide.createIcons() after render
+        // Hook to refresh icons
         const useLucide = () => {
             useEffect(() => {
                 lucide.createIcons();
@@ -175,7 +168,6 @@
             playSound: (type) => {
                 if (audioManager.isMuted) return;
                 // Simple placeholder for sound effects
-                // console.log(`Playing sound: ${type}`);
             }
         };
 
@@ -329,7 +321,7 @@
         };
 
         // --- STORY GAME ---
-        const StoryGame = ({ onBack }) => {
+        const StoryGame = ({ onBack, fontScale }) => {
             useLucide();
             const [mode, setMode] = useState('category');
             const [currentCategory, setCurrentCategory] = useState(null);
@@ -440,7 +432,10 @@
                         <button onClick={() => setMode('category')} className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition"><Icon name="Home" className="text-indigo-600" /></button>
                         
                         <div className="bg-white px-6 py-2 rounded-full shadow-md border-2 border-indigo-200 flex items-center gap-3">
-                            <span className="text-indigo-800 font-bold text-2xl tracking-wide">
+                            <span 
+                                className="text-indigo-800 font-bold tracking-wide"
+                                style={{ fontSize: `${1.5 * fontScale}rem` }}
+                            >
                                 <span className="text-indigo-600">{q.min}</span> - <span className="text-red-500">{q.sub}</span> = 
                             </span>
                             <div className="relative">
@@ -451,7 +446,8 @@
                                     onChange={(e) => setUserAnswer(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && checkUserAnswer()}
                                     disabled={step === 8}
-                                    className={`w-24 h-12 text-center text-2xl font-bold border-2 rounded-xl outline-none transition-all
+                                    style={{ fontSize: `${1.5 * fontScale}rem`, width: `${6 * fontScale}rem`, height: `${3 * fontScale}rem` }}
+                                    className={`text-center font-bold border-2 rounded-xl outline-none transition-all
                                         ${isAnswerCorrect === false ? 'border-red-500 bg-red-50 animate-shake' : 
                                         isAnswerCorrect === true ? 'border-green-500 bg-green-50' : 'border-indigo-300 focus:border-indigo-500'}
                                     `}
@@ -487,6 +483,12 @@
                                             <motion.div key={`giant-${i}`} layoutId={isBorrower ? "giant-borrower" : undefined} className={`relative text-7xl transition-transform ${step === 7 && !isClicked && !isBorrower && clickedGiants.length < q.subTens ? 'cursor-pointer hover:scale-110' : ''}`} onClick={() => !isBorrower && handleGiantClick(`g-${i}`)}>
                                                 {isBorrower && step === 4 ? <button onClick={() => setStep(5)} className="absolute inset-0 z-20 animate-bounce">🦸‍♂️</button> : <span>🗿</span>}
                                                 {isClicked && <motion.div initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 0.7, scale: 1 }} className="absolute inset-0 flex items-center justify-center text-red-600 font-bold"><Icon name="X" size={64} strokeWidth={4} /></motion.div>}
+                                                <span 
+                                                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-indigo-300 font-bold pointer-events-none"
+                                                    style={{ fontSize: `${1 * fontScale}rem` }}
+                                                >
+                                                    {i + 1}
+                                                </span>
                                             </motion.div>
                                         );
                                     })}
@@ -503,6 +505,12 @@
                                         <motion.div key={id} className={`text-5xl relative ${step === 6 && !isClicked && clickedSoldiers.length < q.subUnits ? 'cursor-pointer hover:scale-110' : ''}`} onClick={() => handleSoldierClick(id)}>
                                             👶
                                             {isClicked && <motion.div initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 0.7, scale: 1 }} className="absolute inset-0 flex items-center justify-center text-red-600 font-bold"><Icon name="X" size={40} strokeWidth={4} /></motion.div>}
+                                            <span 
+                                                className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-green-600 font-bold pointer-events-none"
+                                                style={{ fontSize: `${1 * fontScale}rem` }}
+                                            >
+                                                {idx + 1}
+                                            </span>
                                         </motion.div>
                                     );
                                 })}
@@ -516,6 +524,12 @@
                                                     <motion.div key={id} className={`text-4xl relative ${step === 6 && !isClicked && clickedSoldiers.length < q.subUnits ? 'cursor-pointer hover:scale-110' : ''}`} onClick={() => handleSoldierClick(id)}>
                                                         👶
                                                         {isClicked && <motion.div initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 0.7, scale: 1 }} className="absolute inset-0 flex items-center justify-center text-red-600 font-bold"><Icon name="X" size={40} strokeWidth={4} /></motion.div>}
+                                                        <span 
+                                                            className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-green-600 font-bold pointer-events-none"
+                                                            style={{ fontSize: `${1 * fontScale}rem` }}
+                                                        >
+                                                            {q.minUnits + i + 1}
+                                                        </span>
                                                     </motion.div>
                                                 );
                                             })}
@@ -572,7 +586,7 @@
         };
 
         // --- BURGER GAME ---
-        const BurgerGame = ({ onBack }) => {
+        const BurgerGame = ({ onBack, fontScale }) => {
             useLucide();
             const [mode, setMode] = useState('category');
             const [currentCategory, setCurrentCategory] = useState(null);
@@ -691,7 +705,10 @@
                         <button onClick={() => setMode('category')} className="p-3 bg-white rounded-full shadow hover:bg-gray-50"><Icon name="Home" className="text-orange-600" /></button>
                         
                         <div className="bg-white px-6 py-2 rounded-full shadow-md border-2 border-orange-200 flex items-center gap-3">
-                            <span className="text-orange-800 font-bold text-2xl tracking-wide">
+                            <span 
+                                className="text-orange-800 font-bold tracking-wide"
+                                style={{ fontSize: `${1.5 * fontScale}rem` }}
+                            >
                                 訂單: <span className="text-orange-600">{q.min}</span> - <span className="text-red-500">{q.sub}</span> = 
                             </span>
                             <div className="relative">
@@ -702,7 +719,8 @@
                                     onChange={(e) => setUserAnswer(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && checkUserAnswer()}
                                     disabled={step === 7}
-                                    className={`w-24 h-12 text-center text-2xl font-bold border-2 rounded-xl outline-none transition-all
+                                    style={{ fontSize: `${1.5 * fontScale}rem`, width: `${6 * fontScale}rem`, height: `${3 * fontScale}rem` }}
+                                    className={`text-center font-bold border-2 rounded-xl outline-none transition-all
                                         ${isAnswerCorrect === false ? 'border-red-500 bg-red-50 animate-shake' : 
                                         isAnswerCorrect === true ? 'border-green-500 bg-green-50' : 'border-orange-300 focus:border-orange-500'}
                                     `}
@@ -754,6 +772,12 @@
                                                     <Icon name="Package" size={40} />
                                                     {isBorrowTarget && <span className="absolute -top-3 bg-red-500 text-white text-xs px-2 rounded-full">拆開!</span>}
                                                     {step === 5 && movedBoxes.includes(i) && <div className="absolute inset-0 bg-white/50 rounded-xl flex items-center justify-center"><Icon name="Check" className="text-green-600" size={40}/></div>}
+                                                    <span 
+                                                        className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-amber-200 font-bold pointer-events-none"
+                                                        style={{ fontSize: `${1 * fontScale}rem` }}
+                                                    >
+                                                        {i + 1}
+                                                    </span>
                                                 </motion.button>
                                             );
                                         })}
@@ -780,6 +804,12 @@
                                                 >
                                                     🍔
                                                     {isServed && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg"><Icon name="Check" className="text-green-500" size={32}/></motion.div>}
+                                                    <span 
+                                                        className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-orange-600 font-bold pointer-events-none"
+                                                        style={{ fontSize: `${1 * fontScale}rem` }}
+                                                    >
+                                                        {i + 1}
+                                                    </span>
                                                 </motion.button>
                                             );
                                         })}
@@ -825,6 +855,7 @@
         const MathAdventure = () => {
             const [currentScreen, setCurrentScreen] = useState('menu');
             const [isMuted, setIsMuted] = useState(false);
+            const [fontScale, setFontScale] = useState(1.0);
 
             useEffect(() => {
                 audioManager.isMuted = isMuted;
@@ -842,6 +873,24 @@
                         {isMuted ? <Icon name="VolumeX" className="text-slate-400" /> : <Icon name="Volume2" className="text-blue-500" />}
                     </button>
 
+                    {/* Font Size Slider */}
+                    <div className="fixed right-4 top-24 z-50 bg-white/90 backdrop-blur p-4 rounded-full shadow-lg border-2 border-slate-200 flex flex-col items-center gap-2">
+                        <Icon name="Type" size={20} className="text-slate-500" />
+                        <div className="h-32 flex items-center">
+                            <input 
+                                type="range" 
+                                min="0.8" 
+                                max="2.0" 
+                                step="0.1" 
+                                value={fontScale}
+                                onChange={(e) => setFontScale(parseFloat(e.target.value))}
+                                className="w-32 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                            />
+                        </div>
+                        <span className="text-xs font-bold text-slate-400">{Math.round(fontScale * 100)}%</span>
+                    </div>
+
                     <AnimatePresence mode="wait">
                         {currentScreen === 'menu' && (
                             <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -850,12 +899,12 @@
                         )}
                         {currentScreen === 'story' && (
                             <motion.div key="story" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                <StoryGame onBack={() => setCurrentScreen('menu')} />
+                                <StoryGame onBack={() => setCurrentScreen('menu')} fontScale={fontScale} />
                             </motion.div>
                         )}
                         {currentScreen === 'burger' && (
                             <motion.div key="burger" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                <BurgerGame onBack={() => setCurrentScreen('menu')} />
+                                <BurgerGame onBack={() => setCurrentScreen('menu')} fontScale={fontScale} />
                             </motion.div>
                         )}
                     </AnimatePresence>
